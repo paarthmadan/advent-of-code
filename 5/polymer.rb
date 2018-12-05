@@ -6,25 +6,23 @@ end
 
 public
 
-def remove_reactive_pair(x)
-  made_change = false
+def react(x)
+  changed = false
   (x.length - 2).downto(0).each do |index|
     if match?(x[index], x[index + 1])
       x.slice!(index..index + 1)
-      made_change = true
+      changed = true
     end
   end
-  remove_reactive_pair(x) if made_change
-  x
+  (changed) ? react(x) : x.length
 end
 
 polymer = ""
-
 File.readlines("input.txt").each { |line| polymer += line.chomp }
 
-puts remove_reactive_pair(polymer).length
+puts react(polymer)
 
-current_min = Float::MAX.to_i
-("a".."z").each { |letter| current_min = [current_min, remove_reactive_pair(polymer.gsub(/["#{letter}#{letter.upcase}"]/, "")).length].min }
+min = Float::MAX.to_i
+("a".."z").each { |l| min = [min, react(polymer.gsub(/["#{l}#{l.upcase}"]/, ""))].min }
 
-puts current_min
+puts min
