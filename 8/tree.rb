@@ -1,39 +1,46 @@
 class Node
   attr_accessor :children, :meta_data
+
+  def initialize(children, meta_data)
+    @children = children
+    @meta_data = meta_data
+  end
+
+  def value
+    if children.length == 0
+      meta_data.inject(0) { |sum,x| sum + x } if children.length == 0
+    else
+      meta_data.inject(0) { |sum, data| sum + ((children[data - 1]) ? children[data - 1].value : 0) }
+    end
+  end
+
+  def sum
+    meta_data.inject(0) { |sum, x| sum + x } + children.inject(0) { |sum, child| sum + child.sum }
+  end
 end
 
 @data = []
 @index = 0
 
-File.readlines("input").each do |line|
-  @data = line.split(" ").map(&:to_i)
-end
+File.readlines("input").each { |line| @data = line.split(" ").map(&:to_i) }
 
-@meta_data_count = 0
-
-# RETURN --> NODE
 def traverse_data
-  q = @data[@index]
-  m = @data[@index + 1]
+  h = @data[@index..@index + 1]
   @index += 2
 
   children_node = []
-  q.times { |x| children_node << traverse_data }
+  h[0].times { |x| children_node << traverse_data }
 
   meta_data = []
-  m.times do |y|
-    meta_data << @data[@index]
-    @meta_data_count += @data[@index]
-    @index += 1
-  end
+  h[1].times { |y| meta_data << @data[@index + y] }
 
-  n = Node.new
-  n.children = children_node
-  n.meta_data = meta_data
+  @index += h[1]
 
-  n
+  n = Node.new(children_node, meta_data)
 end
 
 head = traverse_data
-puts @meta_data_count
+
+puts head.sum
+puts head.value
 
