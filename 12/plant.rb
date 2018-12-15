@@ -1,5 +1,6 @@
 FILE = "input"
 PADDING = 10000
+GENERATIONS = 120
 
 input = []
 File.readlines(FILE).each { |line| input << line }
@@ -13,17 +14,16 @@ input[2..-1].each do |code|
   notes[data[0]] = data[2]
 end
 
-50000000000.times do |q|
-  puts q
+previous_generation = 0
+
+GENERATIONS.times do |q|
   new_state = ""
   state.each_char.with_index do |c,i|
     new_state << notes[state[(i - 2)..(i + 2)]]
   end
   state = new_state.gsub!("x", ".")
-  puts state
-end
 
-puts state
+end
 
 total = 0
 state.each_char.with_index do |c,i|
@@ -31,3 +31,4 @@ state.each_char.with_index do |c,i|
 end
 
 puts total
+puts ((50000000000 - GENERATIONS) * 22) + (total)
