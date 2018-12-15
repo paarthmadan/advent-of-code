@@ -86,9 +86,7 @@ File.readlines(FILE).each.with_index do |line, y|
   end
 end
 
-accident = false
-
-until accident
+until carts.length == 1
   visited = Hash.new(0)
   carts.each do |cart|
     new_pos = cart.move
@@ -96,10 +94,11 @@ until accident
       cart.change_direction(special_points[new_pos])
     end
     visited[new_pos] += 1
-    if(visited[new_pos] > 1)
-      accident = true
-      p new_pos
-    end
   end
+  delete = visited.keys.find_all { |k| visited[k] > 1 }
+  puts visited
+  carts.keep_if { |cart| !delete.include?(cart.current_pos) }
 end
+
+puts carts
 
