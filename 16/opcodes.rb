@@ -60,30 +60,12 @@ end
 
 puts three_count
 
-def print_map
-  OPCODES_MAP.each do |key, value|
-     freq = value.inject(Hash.new(0)) { |h, v| h[v] += 1; h }
-     p "#{key} --> #{freq}"
-   end
-  puts "––––––––––––––––––––––––––––"
+CHART = [13, 9, 14, 15, 1, 8, 12, 11, 3, 7, 5, 6, 10, 4, 0, 2]
+final_reg = [0, 0, 0, 0]
+
+File.readlines("part_two").each do |line|
+  operation = line.strip!.split(" ").map(&:to_i)
+  OPCODES[CHART[operation[0]]].call(final_reg, operation)
 end
 
-def delete(q)
-  OPCODES_MAP.each { |key, value| value.tap {|x| x.delete(q)}}
-  print_map
-end
-
-delete(10)
-delete(13)
-delete(5)
-delete(12)
-delete(6)
-delete(0)
-delete(2)
-delete(3)
-delete(7)
-delete(1)
-delete(9)
-delete(11)
-delete(14)
-delete(8)
+p final_reg
