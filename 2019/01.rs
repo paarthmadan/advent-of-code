@@ -1,19 +1,19 @@
 mod helper;
 
-use std::{env, process};
+use helper::exit;
+use std::env;
 
 fn main() {
     let args: Vec<String> = env::args().collect();
     if args.len() != 2 {
-        println!("Usage: ./01 <file>");
-        process::exit(1)
+        exit("Usage: 01 <file>");
     };
 
     let fuel: i32 = helper::load_file(&args[1])
         .into_iter()
-        .map(|x| {
-            let v = x.parse::<i32>().unwrap();
-            calculate_fuel(v)
+        .map(|x| match x.parse::<i32>() {
+            Ok(v) => calculate_fuel(v),
+            Err(_) => exit(&format!("Couldn't parse: {}", x)),
         })
         .sum();
 

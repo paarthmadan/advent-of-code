@@ -1,5 +1,6 @@
 use std::fs::File;
 use std::io::{BufRead, BufReader};
+use std::process;
 
 pub fn load_file(file_path: &str) -> Vec<String> {
     let mut input = Vec::new();
@@ -12,4 +13,9 @@ pub fn load_file(file_path: &str) -> Vec<String> {
     }
 
     input
+}
+
+pub fn exit(message: &str) -> ! {
+    println!("{}", message);
+    process::exit(1);
 }
