@@ -1,8 +1,6 @@
 mod helper;
 
-use helper::load_file;
-use std::env;
-use std::process;
+use std::{env, process};
 
 fn main() {
     let args: Vec<String> = env::args().collect();
@@ -11,10 +9,12 @@ fn main() {
         process::exit(1)
     };
 
-    let fuel: i32 = load_file(&args[1])
+    let fuel: i32 = helper::load_file(&args[1])
         .into_iter()
-        .map(|x| x.parse::<i32>().unwrap())
-        .map(|v| calculate_fuel(v))
+        .map(|x| {
+            let v = x.parse::<i32>().unwrap();
+            calculate_fuel(v)
+        })
         .sum();
 
     println!("{}", fuel);
