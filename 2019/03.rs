@@ -1,7 +1,9 @@
 mod helper;
 
 use helper::exit;
-use std::{collections::HashSet, env};
+use std::collections::{HashSet, HashMap};
+use std::env;
+use std::cmp::min;
 
 #[derive(PartialEq, Eq, Hash, Debug, Copy, Clone)]
 struct Point(i32, i32);
@@ -25,15 +27,32 @@ fn main() {
     let wire_points: Vec<Vec<Point>> = file.into_iter().map(|line| extract_points(line)).collect();
 
     let mut set_a: HashSet<Point> = HashSet::new();
+    let mut map_a: HashMap<Point, u32> = HashMap::new();
+
     let mut set_b: HashSet<Point> = HashSet::new();
+    let mut map_b: HashMap<Point, u32> = HashMap::new();
 
-    for point in &wire_points[0] { set_a.insert(*point); }
-    for point in &wire_points[1] { set_b.insert(*point); }
+    for (i, point) in wire_points[0].iter().enumerate() { 
+        if set_a.insert(*point) {
+            map_a.insert(*point, (i as u32) + 1); 
+        };
+    }
 
-    let min = set_a.intersection(&set_b).into_iter().min_by(|x, y| *(&x.manhattan_distance().cmp(&y.manhattan_distance()))).unwrap();
+    for (i, point) in wire_points[1].iter().enumerate() { 
+        if set_b.insert(*point) {
+            map_b.insert(*point, (i as u32) + 1); 
+        };
+    }
+
+    let min = set_a
+        .intersection(&set_b)
+        .into_iter()
+        .min_by(|&x, &y| (&map_a[x] + &map_b[x]).cmp(&(&map_a[y] + &map_b[y])))
+        .unwrap();
 
     println!("{:#?}", min);
     println!("{}", min.manhattan_distance());
+    println!("{}", map_a[min] + map_b[min]);
 }
 
 fn extract_points(line: &str) -> Vec<Point> {
