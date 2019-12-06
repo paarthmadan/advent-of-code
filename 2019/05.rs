@@ -24,10 +24,11 @@ fn perform(mut input: &mut Vec<i32>) {
     loop {
         opcode = parse_opcode(&input[pc]);
         match opcode {
-            1 | 2 => instr4(opcode, &mut input, &mut pc),
+            1 | 2 | 7 | 8 => instr4(opcode, &mut input, &mut pc),
             3 | 4 => instr2(opcode, &mut input, &mut pc),
+            5 | 6 => instr3(opcode, &mut input, &mut pc),
             99 => break,
-            _ => unreachable!{},
+            _ => unreachable! {},
         }
     }
 }
@@ -37,36 +38,71 @@ fn instr4(opcode: i32, instr: &mut Vec<i32>, ptr: &mut usize) {
 
     let s1 = resolve(instr, &instr[*ptr + 1], modes[0]);
     let s2 = resolve(instr, &instr[*ptr + 2], modes[1]);
-    let dst = instr[*ptr + 3];
+    let dst = instr[*ptr + 3] as usize;
 
     match opcode {
-        1 =>  {
-            instr[dst as usize] = s1 + s2;
-        },
-        2 => {
-            instr[dst as usize] = s1 * s2;
-        },
-        _ => unreachable!{},
+        1 => instr[dst] = s1 + s2,
+        2 => instr[dst] = s1 * s2,
+        7 => {
+            if s1 < s2 {
+                instr[dst] = 1;
+            } else {
+                instr[dst] = 0;
+            }
+        }
+        8 => {
+            if s1 == s2 {
+                instr[dst] = 1;
+            } else {
+                instr[dst] = 0;
+            }
+        }
+        _ => unreachable! {},
     }
 
     *ptr += 4;
 }
 
 fn instr2(opcode: i32, instr: &mut Vec<i32>, ptr: &mut usize) {
+    let modes = parse_parameter_modes(&instr[*ptr as usize], 1);
     let p1 = instr[*ptr + 1];
     match opcode {
         3 => {
             let mut input = String::new();
-            io::stdin().read_line(&mut input).expect("Failed to read from STDIN");
+            io::stdin()
+                .read_line(&mut input)
+                .expect("Failed to read from STDIN");
             let num = input.trim().parse::<i32>().unwrap();
             instr[p1 as usize] = num;
-        },
-        4 => {
-            println!("{}", instr[p1 as usize])
-        },
-        _ => unreachable!{},
+        }
+        4 => println!("{}", resolve(instr, &p1, modes[0])),
+        _ => unreachable! {},
     }
     *ptr += 2;
+}
+
+fn instr3(opcode: i32, instr: &mut Vec<i32>, ptr: &mut usize) {
+    let modes = parse_parameter_modes(&instr[*ptr as usize], 2);
+    let s1 = resolve(instr, &instr[*ptr + 1], modes[0]);
+    let s2 = resolve(instr, &instr[*ptr + 2], modes[1]);
+
+    match opcode {
+        5 => {
+            if s1 != 0 { 
+                *ptr = s2 as usize; 
+            } else {
+                *ptr += 3;
+            }
+        },
+        6 => {
+            if s1 == 0 { 
+                *ptr = s2 as usize; 
+            } else {
+                *ptr += 3;
+            }
+        },
+        _ => unreachable! {},
+    }
 }
 
 fn parse_opcode(instr1: &i32) -> i32 {
@@ -90,6 +126,6 @@ fn resolve(instr: &Vec<i32>, p: &i32, mode: u8) -> i32 {
     match mode {
         0 => instr[*p as usize],
         1 => *p,
-        _ => unreachable!{},
+        _ => unreachable! {},
     }
 }
