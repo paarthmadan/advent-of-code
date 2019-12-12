@@ -1,30 +1,40 @@
-use std::io;
+use self::InputMethod::*;
 use self::Instr2::*;
 use self::Instr3::*;
 use self::Instr4::*;
 use self::InstructionType::*;
 use self::Status::*;
+use std::io;
 
 pub struct IntcodeMachine {
     memory: Vec<i32>,
     ptr: usize,
+    input_method: InputMethod,
+    input_stack: Vec<i32>,
+}
+
+pub enum MachineStatus {
+    Output(i32),
+    Halt,
 }
 
 impl IntcodeMachine {
-    pub fn new(input: Vec<i32>, ptr: usize) -> IntcodeMachine {
+    pub fn new(input: Vec<i32>, ptr: usize, input_method: InputMethod) -> IntcodeMachine {
         IntcodeMachine {
             memory: input,
             ptr,
+            input_method,
+            input_stack: Vec::new(),
         }
     }
 
-    pub fn run(&mut self) {
+    pub fn run(&mut self) -> MachineStatus {
         loop {
             let opcode = parse_opcode(self.memory[self.ptr]);
             let instr = match opcode {
                 1 => Instruction::new(Instr4(Addition)),
                 2 => Instruction::new(Instr4(Multiplication)),
-                3 => Instruction::new(Instr2(InputAndSave)),
+                3 => Instruction::new(Instr2(InputAndSave(self.input_method))),
                 4 => Instruction::new(Instr2(Output)),
                 5 => Instruction::new(Instr3(JumpIfTrue)),
                 6 => Instruction::new(Instr3(JumpIfFalse)),
@@ -34,12 +44,25 @@ impl IntcodeMachine {
                 _ => unreachable! {},
             };
 
-            match instr.call(&mut self.memory, &mut self.ptr) {
+            match instr.call(&mut self.memory, &mut self.ptr, &mut self.input_stack) {
                 Continue => continue,
-                Halt => break,
+                Halt(out) => match out {
+                    Some(o) => return MachineStatus::Output(o),
+                    None => return MachineStatus::Halt,
+                },
             }
         }
     }
+
+    pub fn append_input(&mut self, input: i32) {
+        self.input_stack.push(input)
+    }
+}
+
+#[derive(Clone, Copy)]
+pub enum InputMethod {
+    User,
+    Computed,
 }
 
 struct Instruction {
@@ -54,7 +77,7 @@ enum InstructionType {
 }
 
 enum Instr2 {
-    InputAndSave,
+    InputAndSave(InputMethod),
     Output,
 }
 
@@ -72,29 +95,34 @@ enum Instr4 {
 
 enum Status {
     Continue,
-    Halt,
+    Halt(Option<i32>),
 }
 
 impl Instruction {
     fn new(instr_type: InstructionType) -> Instruction {
         Instruction { instr_type }
-    } 
+    }
 
-    fn call(&self, input: &mut Vec<i32>, ptr: &mut usize) -> Status {
+    fn call(
+        &self,
+        input: &mut Vec<i32>,
+        ptr: &mut usize,
+        mut input_stack: &mut Vec<i32>,
+    ) -> Status {
         match &self.instr_type {
             Instr2(op) => {
                 let modes = parse_parameter_modes(&input[*ptr as usize], 1);
                 let p1 = input[*ptr + 1];
                 match op {
-                    InputAndSave => {
-                        let mut num = String::new();
-                        io::stdin()
-                            .read_line(&mut num)
-                            .expect("Failed to read from STDIN");
-                        let num = num.trim().parse::<i32>().unwrap();
-                        input[p1 as usize] = num;
+                    InputAndSave(method) => {
+                        push_input_to_stack(&mut input_stack, *method);
+                        input[p1 as usize] = input_stack.remove(0);
                     }
-                    Output => println!("{}", resolve(&input, &p1, modes[0])),
+                    Output => {
+                        let o = resolve(&input, &p1, modes[0]);
+                        *ptr += 2;
+                        return Status::Halt(Some(o));
+                    }
                 }
                 *ptr += 2;
             }
@@ -121,7 +149,7 @@ impl Instruction {
                 }
                 *ptr += 4;
             }
-            Terminate => return Status::Halt,
+            Terminate => return Status::Halt(None),
         }
         Status::Continue
     }
@@ -149,4 +177,18 @@ fn resolve(instr: &Vec<i32>, p: &i32, mode: u8) -> i32 {
 
 fn parse_opcode(instr1: i32) -> i32 {
     instr1 % 100
+}
+
+fn push_input_to_stack(input_stack: &mut Vec<i32>, im: InputMethod) {
+    match im {
+        User => {
+            let mut inp = String::new();
+            io::stdin()
+                .read_line(&mut inp)
+                .expect("Couldn't read from STDIN");
+            let num = inp.trim().parse::<i32>().unwrap();
+            input_stack.push(num);
+        }
+        Computed => {}
+    }
 }

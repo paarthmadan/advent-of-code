@@ -2,7 +2,7 @@ mod helper;
 mod intcode;
 
 use helper::exit;
-use intcode::IntcodeMachine;
+use intcode::{IntcodeMachine, InputMethod};
 use std::env;
 
 fn main() {
@@ -16,6 +16,6 @@ fn main() {
     let input: Vec<i32> = file.split(",").map(|x| x.parse::<i32>().unwrap()).collect();
     let ptr: usize = 0;
 
-    let mut machine = IntcodeMachine::new(input, ptr);
+    let mut machine = IntcodeMachine::new(input, ptr, InputMethod::User);
     machine.run();
 }
