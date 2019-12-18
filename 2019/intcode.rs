@@ -7,44 +7,78 @@ use self::Status::*;
 use std::io;
 
 pub struct IntcodeMachine {
-    memory: Vec<i32>,
+    memory: Vec<i64>,
     ptr: usize,
     input_method: InputMethod,
-    input_stack: Vec<i32>,
+    input_stack: Vec<i64>,
+    relative_base: i64,
 }
 
 pub enum MachineStatus {
-    Output(i32),
+    Output(i64),
     Halt,
 }
 
 impl IntcodeMachine {
-    pub fn new(input: Vec<i32>, ptr: usize, input_method: InputMethod) -> IntcodeMachine {
+    pub fn new(input: Vec<i64>, ptr: usize, input_method: InputMethod) -> IntcodeMachine {
         IntcodeMachine {
             memory: input,
             ptr,
             input_method,
             input_stack: Vec::new(),
+            relative_base: 0,
+        }
+    }
+
+    fn read(&mut self, index: usize) -> i64 {
+        if index >= self.memory.len() {
+            self.memory.resize(index + 1, 0);
+        }
+        self.memory[index]
+    }
+
+    fn write(&mut self, index: usize, value: i64) {
+        if index >= self.memory.len() {
+            self.memory.resize(index + 1, 0);
+        }
+        self.memory[index] = value;
+    }
+
+    fn push_input_to_stack(&mut self) {
+        match self.input_method {
+            User => {
+                let mut inp = String::new();
+                io::stdin()
+                    .read_line(&mut inp)
+                    .expect("Couldn't read from STDIN");
+                let num = inp.trim().parse::<i64>().unwrap();
+                self.input_stack.push(num);
+            }
+            Computed => {}
         }
     }
 
     pub fn run(&mut self) -> MachineStatus {
         loop {
-            let opcode = parse_opcode(self.memory[self.ptr]);
+            let opcode = parse_opcode(self.read(self.ptr));
             let instr = match opcode {
                 1 => Instruction::new(Instr4(Addition)),
                 2 => Instruction::new(Instr4(Multiplication)),
                 3 => Instruction::new(Instr2(InputAndSave(self.input_method))),
-                4 => Instruction::new(Instr2(Output)),
+                4 => Instruction::new(Instr2(Output(self.input_method))),
                 5 => Instruction::new(Instr3(JumpIfTrue)),
                 6 => Instruction::new(Instr3(JumpIfFalse)),
                 7 => Instruction::new(Instr4(LessThan)),
                 8 => Instruction::new(Instr4(Equal)),
+                9 => Instruction::new(Instr2(RelativeBase)),
                 99 => Instruction::new(Terminate),
-                _ => unreachable! {},
+                _ => {
+//                    println!("{}", opcode);
+                    unreachable! {}
+                },
             };
 
-            match instr.call(&mut self.memory, &mut self.ptr, &mut self.input_stack) {
+            match instr.call(self) {
                 Continue => continue,
                 Halt(out) => match out {
                     Some(o) => return MachineStatus::Output(o),
@@ -54,12 +88,12 @@ impl IntcodeMachine {
         }
     }
 
-    pub fn append_input(&mut self, input: i32) {
+    pub fn append_input(&mut self, input: i64) {
         self.input_stack.push(input)
     }
 }
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Debug)]
 pub enum InputMethod {
     User,
     Computed,
@@ -69,6 +103,7 @@ struct Instruction {
     instr_type: InstructionType,
 }
 
+#[derive(Debug)]
 enum InstructionType {
     Instr2(Instr2),
     Instr3(Instr3),
@@ -76,16 +111,20 @@ enum InstructionType {
     Terminate,
 }
 
+#[derive(Debug)]
 enum Instr2 {
     InputAndSave(InputMethod),
-    Output,
+    Output(InputMethod),
+    RelativeBase,
 }
 
+#[derive(Debug)]
 enum Instr3 {
     JumpIfTrue,
     JumpIfFalse,
 }
 
+#[derive(Debug)]
 enum Instr4 {
     Addition,
     Multiplication,
@@ -95,7 +134,7 @@ enum Instr4 {
 
 enum Status {
     Continue,
-    Halt(Option<i32>),
+    Halt(Option<i64>),
 }
 
 impl Instruction {
@@ -103,51 +142,77 @@ impl Instruction {
         Instruction { instr_type }
     }
 
-    fn call(
-        &self,
-        input: &mut Vec<i32>,
-        ptr: &mut usize,
-        mut input_stack: &mut Vec<i32>,
-    ) -> Status {
+    fn call(&self, machine: &mut IntcodeMachine) -> Status {
+        //println!("Head: {}", machine.ptr);
+        //println!("Instruction: {:#?}", self.instr_type);
+        //println!("Memory: {:?}", machine.memory);
         match &self.instr_type {
             Instr2(op) => {
-                let modes = parse_parameter_modes(&input[*ptr as usize], 1);
-                let p1 = input[*ptr + 1];
+                let modes = parse_parameter_modes(&machine.read(machine.ptr), 1);
+                let p1 = resolve(machine, machine.ptr + 1, modes[0]);
                 match op {
                     InputAndSave(method) => {
-                        push_input_to_stack(&mut input_stack, *method);
-                        input[p1 as usize] = input_stack.remove(0);
+                        machine.push_input_to_stack();
+
+                        let val = machine.read(machine.ptr + 1);
+                        let pop = machine.input_stack.remove(0);
+
+                        if modes[0] != 2 {
+                            machine.write(val as usize, pop);
+                        } else {
+                            machine.write((machine.relative_base + val) as usize, pop);
+                        };
                     }
-                    Output => {
-                        let o = resolve(&input, &p1, modes[0]);
-                        *ptr += 2;
-                        return Status::Halt(Some(o));
+                    Output(method) => match method {
+                        Computed => {
+                            machine.ptr += 2;
+                            return Status::Halt(Some(p1));
+                        }
+                        User => println!("{}", p1),
+                    },
+                    RelativeBase => {
+                        machine.relative_base += p1;
                     }
                 }
-                *ptr += 2;
+                machine.ptr += 2;
             }
             Instr3(op) => {
-                let modes = parse_parameter_modes(&input[*ptr as usize], 2);
-                let s1 = resolve(&input, &input[*ptr + 1], modes[0]);
-                let s2 = resolve(&input, &input[*ptr + 2], modes[1]);
+                let modes = parse_parameter_modes(&machine.read(machine.ptr), 2);
+                let s1 = resolve(machine, machine.ptr + 1, modes[0]);
+                let s2 = resolve(machine, machine.ptr + 2, modes[1]);
                 match op {
-                    JumpIfTrue => *ptr = if s1 != 0 { s2 as usize } else { *ptr + 3 },
-                    JumpIfFalse => *ptr = if s1 == 0 { s2 as usize } else { *ptr + 3 },
+                    JumpIfTrue => {
+                        machine.ptr = if s1 != 0 {
+                            s2 as usize
+                        } else {
+                            machine.ptr + 3
+                        }
+                    }
+                    JumpIfFalse => {
+                        //println!("s1: {}, s2: {}", s1, s2);
+                        machine.ptr = if s1 == 0 {
+                            s2 as usize
+                        } else {
+                            machine.ptr + 3
+                        }
+                    }
                 }
             }
             Instr4(op) => {
-                let modes = parse_parameter_modes(&input[*ptr as usize], 2);
-                let s1 = resolve(&input, &input[*ptr + 1], modes[0]);
-                let s2 = resolve(&input, &input[*ptr + 2], modes[1]);
-                let dst = input[*ptr + 3] as usize;
+                let modes = parse_parameter_modes(&machine.read(machine.ptr), 3);
+                let s1 = resolve(machine, machine.ptr + 1, modes[0]);
+                let s2 = resolve(machine, machine.ptr + 2, modes[1]);
+                let dst = write_resolve(machine, machine.ptr + 3, modes[2]) as usize;
+
+                //println!("Saving at DST: {}", dst);
 
                 match op {
-                    Addition => input[dst] = s1 + s2,
-                    Multiplication => input[dst] = s1 * s2,
-                    LessThan => input[dst] = (s1 < s2) as i32,
-                    Equal => input[dst] = (s1 == s2) as i32,
+                    Addition => machine.write(dst, s1 + s2),
+                    Multiplication => machine.write(dst, s1 * s2),
+                    LessThan => machine.write(dst, (s1 < s2) as i64),
+                    Equal => machine.write(dst, (s1 == s2) as i64),
                 }
-                *ptr += 4;
+                machine.ptr += 4;
             }
             Terminate => return Status::Halt(None),
         }
@@ -155,7 +220,7 @@ impl Instruction {
     }
 }
 
-fn parse_parameter_modes(instr1: &i32, min: u8) -> Vec<u8> {
+fn parse_parameter_modes(instr1: &i64, min: u8) -> Vec<u8> {
     let mut v = *instr1 / 100;
     let mut modes: Vec<u8> = Vec::new();
 
@@ -167,28 +232,26 @@ fn parse_parameter_modes(instr1: &i32, min: u8) -> Vec<u8> {
     modes
 }
 
-fn resolve(instr: &Vec<i32>, p: &i32, mode: u8) -> i32 {
+fn resolve(machine: &mut IntcodeMachine, ptr: usize, mode: u8) -> i64 {
+    let p = machine.read(ptr);
     match mode {
-        0 => instr[*p as usize],
-        1 => *p,
+        0 => machine.read(p as usize),
+        1 => p,
+        2 => machine.read((machine.relative_base + p) as usize),
         _ => unreachable! {},
     }
 }
 
-fn parse_opcode(instr1: i32) -> i32 {
-    instr1 % 100
+fn write_resolve(machine: &mut IntcodeMachine, ptr: usize, mode: u8) -> i64 {
+    let p = machine.read(ptr);
+    let f = match mode {
+        0 | 1 => p,
+        2 => machine.relative_base + p,
+        _ => unreachable! {},
+    };
+    f
 }
 
-fn push_input_to_stack(input_stack: &mut Vec<i32>, im: InputMethod) {
-    match im {
-        User => {
-            let mut inp = String::new();
-            io::stdin()
-                .read_line(&mut inp)
-                .expect("Couldn't read from STDIN");
-            let num = inp.trim().parse::<i32>().unwrap();
-            input_stack.push(num);
-        }
-        Computed => {}
-    }
+fn parse_opcode(instr1: i64) -> i64 {
+    instr1 % 100
 }

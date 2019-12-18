@@ -13,14 +13,14 @@ fn main() {
 
     let file = &helper::load_file(&args[1])[0];
 
-    let input: Vec<i32> = file.split(",").map(|x| x.parse::<i32>().unwrap()).collect();
+    let input: Vec<i64> = file.split(",").map(|x| x.parse::<i64>().unwrap()).collect();
     let ptr: usize = 0;
 
     println!("{}", pt_1(&input, &ptr));
     println!("{}", pt_2(&input, &ptr));
 }
 
-fn pt_1(input: &Vec<i32>, ptr: &usize) -> i32 {
+fn pt_1(input: &Vec<i64>, ptr: &usize) -> i64 {
     let mut max = 0;
     for setting in permutations(&mut [0, 1, 2, 3, 4]) {
         let mut machines: Vec<IntcodeMachine> = Vec::with_capacity(5);
@@ -47,7 +47,7 @@ fn pt_1(input: &Vec<i32>, ptr: &usize) -> i32 {
     max
 }
 
-fn pt_2(input: &Vec<i32>, ptr: &usize) -> i32 {
+fn pt_2(input: &Vec<i64>, ptr: &usize) -> i64 {
     let mut max = 0;
     for setting in permutations(&mut [5, 6, 7, 8, 9]) {
         let mut machines: Vec<IntcodeMachine> = Vec::with_capacity(5);
@@ -84,13 +84,13 @@ fn pt_2(input: &Vec<i32>, ptr: &usize) -> i32 {
     max
 }
 
-fn permutations(mut elements: &mut [i32; 5]) -> Vec<[i32; 5]> {
-    let mut permutations: Vec<[i32; 5]> = Vec::new();
+fn permutations(mut elements: &mut [i64; 5]) -> Vec<[i64; 5]> {
+    let mut permutations: Vec<[i64; 5]> = Vec::new();
     permutations_helper(5, &mut elements, &mut permutations);
     return permutations;
 }
 
-fn permutations_helper(n: usize, elements: &mut [i32; 5], permutations: &mut Vec<[i32; 5]>) {
+fn permutations_helper(n: usize, elements: &mut [i64; 5], permutations: &mut Vec<[i64; 5]>) {
     if n == 1 {
         permutations.push(*elements);
         return;

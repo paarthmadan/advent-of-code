@@ -8,7 +8,7 @@ use std::env;
 fn main() {
     let args: Vec<String> = env::args().collect();
     if args.len() != 2 {
-        exit("Usage: 05 <file>");
+        exit("Usage: 09 <file>");
     };
 
     let file = &helper::load_file(&args[1])[0];
