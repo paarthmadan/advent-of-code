@@ -73,9 +73,8 @@ impl IntcodeMachine {
                 9 => Instruction::new(Instr2(RelativeBase)),
                 99 => Instruction::new(Terminate),
                 _ => {
-//                    println!("{}", opcode);
                     unreachable! {}
-                },
+                }
             };
 
             match instr.call(self) {
@@ -143,9 +142,6 @@ impl Instruction {
     }
 
     fn call(&self, machine: &mut IntcodeMachine) -> Status {
-        //println!("Head: {}", machine.ptr);
-        //println!("Instruction: {:#?}", self.instr_type);
-        //println!("Memory: {:?}", machine.memory);
         match &self.instr_type {
             Instr2(op) => {
                 let modes = parse_parameter_modes(&machine.read(machine.ptr), 1);
@@ -189,7 +185,6 @@ impl Instruction {
                         }
                     }
                     JumpIfFalse => {
-                        //println!("s1: {}, s2: {}", s1, s2);
                         machine.ptr = if s1 == 0 {
                             s2 as usize
                         } else {
@@ -203,8 +198,6 @@ impl Instruction {
                 let s1 = resolve(machine, machine.ptr + 1, modes[0]);
                 let s2 = resolve(machine, machine.ptr + 2, modes[1]);
                 let dst = write_resolve(machine, machine.ptr + 3, modes[2]) as usize;
-
-                //println!("Saving at DST: {}", dst);
 
                 match op {
                     Addition => machine.write(dst, s1 + s2),

@@ -87,10 +87,11 @@ fn find_detectable_asteroids(current_asteroid: &Asteroid, asteroids: &HashSet<As
     let mut slopes_encountered: HashSet<Slope> = HashSet::new();
 
     for asteroid in asteroids {
-        if *asteroid == *current_asteroid { continue; }
+        if *asteroid == *current_asteroid {
+            continue;
+        }
         slopes_encountered.insert(Slope::between(current_asteroid, asteroid));
     }
 
     slopes_encountered.len() as u32
 }
-

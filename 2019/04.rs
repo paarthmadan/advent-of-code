@@ -15,21 +15,23 @@ fn pt_2() -> u32 {
         let mut number_of_groups: usize = 0;
 
         for digit in guess.to_string().chars() {
-            if prev == 'x' { 
-                prev = digit; 
+            if prev == 'x' {
+                prev = digit;
                 continue;
             }
-            if prev > digit { continue 'guess; }
+            if prev > digit {
+                continue 'guess;
+            }
             let same_digit = prev == digit;
             match (currently_parsing_group, same_digit) {
                 (false, true) => new_group(&mut currently_parsing_group, &mut count),
                 (true, true) => same_group(&mut count, &number_of_groups),
                 (true, false) => end_group(&mut currently_parsing_group, &mut number_of_groups),
-                (false, false) => {}, 
+                (false, false) => {}
             }
             prev = digit;
         }
-        
+
         if count.into_iter().any(|x| x == 2) {
             ok_pattern_count += 1;
         }

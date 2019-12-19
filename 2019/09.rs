@@ -2,7 +2,7 @@ mod helper;
 mod intcode;
 
 use helper::exit;
-use intcode::{IntcodeMachine, InputMethod};
+use intcode::{InputMethod, IntcodeMachine};
 use std::env;
 
 fn main() {
