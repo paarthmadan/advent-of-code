@@ -39,23 +39,48 @@ impl FromStr for Command {
     }
 }
 
+struct Submarine {
+    x: u32,
+    y: u32,
+    aim: u32,
+}
+
+impl Submarine {
+    pub fn new() -> Self {
+        Self { x: 0, y: 0, aim: 0 }
+    }
+
+    fn perform(&mut self, command: Command) {
+        match command {
+            Down(units) => self.aim += units,
+            Up(units) => self.aim -= units,
+            Forward(units) => {
+                self.x += units;
+                self.y += units * self.aim;
+            }
+        }
+    }
+
+    fn score(&self) -> u32 {
+        self.x * self.y
+    }
+}
+
 fn main() {
     let args: Vec<String> = env::args().collect();
     if args.len() != 2 {
         exit("Usage: 02 <file>");
     };
 
-    let input: (u32, u32) = helper::load_file(&args[1])
+    let mut submarine = Submarine::new();
+
+    helper::load_file(&args[1])
         .into_iter()
         .map(|line| match line.parse::<Command>() {
             Ok(command) => command,
             Err(_) => exit(&format!("Couldn't parse {} into Command", line)),
         })
-        .fold((0, 0), |acc, command| match command {
-            Down(units) => (acc.0, acc.1 + units),
-            Up(units) => (acc.0, acc.1 - units),
-            Forward(units) => (acc.0 + units, acc.1),
-        });
+        .for_each(|command| submarine.perform(command));
 
-    println!("{:?}", input.0 * input.1)
+    println!("{:?}", submarine.score());
 }
