@@ -18,6 +18,9 @@ fn main() {
         .collect::<Vec<u32>>();
 
     let num_increases: u32 = input
+        .windows(3)
+        .map(|window| window.into_iter().sum())
+        .collect::<Vec<u32>>()
         .windows(2)
         .map(|window| (window[1] > window[0]) as u32)
         .sum();
