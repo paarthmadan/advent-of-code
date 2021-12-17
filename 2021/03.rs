@@ -21,13 +21,13 @@ fn main() {
         .collect();
 
     let gamma = gamma(&input, n);
-    let epsilon = epsilon(&input, n);
+    let epsilon = epsilon(gamma, n);
     println!("{}", gamma * epsilon);
 }
 
-fn epsilon(list: &Vec<u32>, n: u32) -> u32 {
-    let mask: u32 = !(((0xffffffff) >> n) << n);
-    (!gamma(&list, n)) & mask
+fn epsilon(gamma: u32, n: u32) -> u32 {
+    let mask: u32 = !((0xffffffff >> n) << n);
+    !gamma & mask
 }
 
 fn gamma(list: &Vec<u32>, n: u32) -> u32 {
